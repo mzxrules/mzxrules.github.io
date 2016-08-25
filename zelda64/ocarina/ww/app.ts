@@ -7,6 +7,7 @@
     resData: Array<SpawnResolution>;
     entData: Array<EntranceTable>;
     csCheckDefault = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    csCheckParsed = [0, 1, 3];
     csCheck = this.csCheckDefault;
 
     constructor(element: HTMLElement, input: HTMLInputElement) {
@@ -27,8 +28,11 @@
         this.entData = d;
     }
 
-    getResolutionRecord(scene: number, spawn: number, cutscene: number) {
-        return this.resData.filter(x => x.Scene == scene && x.Spawn == x.Spawn && (x.Cs == cutscene || x.Cs == -1))[0];
+    getResolutionRecords(scene: number, spawn: number, cutscene: number) {
+        let result = this.resData.filter(x => x.Scene == scene && x.Spawn == spawn && (x.Cs == cutscene || x.Cs == -1));
+        //if (scene == 6 && spawn == 4)
+        //    console.log(result);
+        return result
     }
 
 
@@ -51,17 +55,23 @@
             dest.forEach(y => {
                 this.csCheck.forEach(cs => {
                     if (x.Base + cs + 4 == y.Index) {
-                        result.push(new StartEndResult(x, y, this.getResolutionRecord(y.Scene, y.Spawn, cs), cs));
+                        let resolutionRecords = this.getResolutionRecords(y.Scene, y.Spawn, cs);
+                        resolutionRecords.forEach(res => {
+                            result.push(new StartEndResult(x, y, res, cs));
+                        });
                     }
                 });
             });
         });
-        console.log("comp start");
         result = result.sort(function (a, b) {
             let x = a.Start.Base - b.Start.Base;
             x = x == 0 ? (a.Result.Cs - b.Result.Cs) : x;
             return x;
         });
+        
+        if ($('.crash-input').is(':checked')) {
+            result = result.filter(x => x.Result.Out > 2);
+        }
         this.updateResults3(result);
     }
 
@@ -77,9 +87,7 @@
         while (this.tableBody.firstChild) {
             this.tableBody.removeChild(this.tableBody.firstChild);
         }
-        {
-            let row = document.createElement('tr')
-        }
+
         for (let i = 0; i < 7; i++) {
             tdsCur.push(document.createElement('td'));
         }
@@ -99,7 +107,6 @@
                     tdsCur[i].rowSpan++;
                 }
             }
-
         });
         this.table.style.visibility = "visible";
     }
@@ -130,11 +137,45 @@
     formatSpawnResolution(x: SpawnResolution) {
         return x.Scene.toString() + " " + x.Spawn.toString() + " " + x.Cs.toString() + " " + x.Fw + " " + x.Out + " " + x.Info;
     }
+
+    getCutscenesToCheck() {
+        let csInput = <string>$('#cutscene-input').val();
+        let csList = <Array<number>>[];
+        let strVal = csInput.split(',');
+        let update = true;
+        for (let i = 0; i < strVal.length; i++) {
+            let str = strVal[i].trim();
+            if (!$.isNumeric(str))
+            {
+                update = false;
+                break;
+            }
+            else {
+                let v = parseInt(str);
+                if ($.inArray(v, csList) == -1)
+                if ($.inArray(v, this.csCheckDefault) != -1)
+                    csList.push(v);
+            }
+        }
+        if (update == true) {
+            this.csCheckParsed = csList.sort(function (a, b) { return a - b; });
+        }
+        
+        if (!$('.all-cutscene-input').is(':checked')) {
+            this.calculateWarps();
+        }
+    }
     
     calculateWarps() {
 
         let e = <HTMLSelectElement>document.getElementById('selection');
-        let i = parseInt((<HTMLOptionElement> e.options[e.selectedIndex]).value);
+        let i = parseInt((<HTMLOptionElement>e.options[e.selectedIndex]).value);
+        if ($('.all-cutscene-input').is(':checked')) {
+            this.csCheck = this.csCheckDefault;
+        }
+        else {
+            this.csCheck = this.csCheckParsed;
+        }
         this.getResultsByScene(i);
 
         //let i = parseInt(this.input.value);
@@ -162,16 +203,30 @@ class StartEndResult {
     getWarpResultSet() {
         if (this.Result == null)
             return ["Error"];
+            
         return [
-            this.Start.Index.toString(16).toUpperCase(),
+            this.indexToStr(this.Start.Index), 
             this.getEntranceDescription(this.Start),
-            this.End.Index.toString(16).toUpperCase(),
+            this.indexToStr(this.End.Index),
             this.getEntranceDescription(this.End),
-            this.Cutscene.toString(),
-            this.Result.Out.toString(),//this.getResolutionType(this.Result),
+            this.padCs(this.Cutscene),
+            this.getResolutionType(this.Result),
             this.getResolutionDescription(this.Result)
         ];
     }
+
+    indexToStr(int: number) {
+        let str = int.toString(16).toUpperCase();
+        let pad = "0000";
+        return pad.substring(0, pad.length - str.length) + str
+    }
+
+    padCs(int: number) {
+        let str = int.toString();
+        let pad = "00";
+        return pad.substring(0, pad.length - str.length) + str
+    }
+
 
     getWarpDescription() {
         if (this.Result == null)
@@ -192,8 +247,8 @@ class StartEndResult {
         return `${ent.Index.toString(16).toUpperCase()}: (${ent.Spawn}) ${this.getEntranceDescription(ent)}`;
     }
     getResolutionDescription(res: SpawnResolution) {
-        let fwStr = res.Fw == 0 ? "" : (res.Fw == 1 ? " With Farore's Wind" : " Without Farore's Wind");
-        return `${this.getResolutionType(res)}${fwStr}: ${res.Info}`;
+        let fwStr = res.Fw == 0 ? "" : (res.Fw == 1 ? " Without FW: " : " With FW: ");
+        return `${fwStr}${res.Info}`;
     }
     getResolutionType(res: SpawnResolution) {
         return res.Out == 1 ? "Crash"
@@ -231,17 +286,11 @@ window.onload = () => {
     let el = document.getElementById('content');
     let input = <HTMLInputElement>document.getElementById('input');
     warpMath = new WarpMath(el, input);
-    warpMath.csCheck = [0, 1, 3];
-
-
     let wwMath = <WarpMath> warpMath;
     console.log(wwMath);
 
     $.when(
-        $.getJSON("SpawnResults.json", function (r) { wwMath.setResolutionData(r); }),
-        $.getJSON("EntranceTable.json", function (r) { wwMath.setEntranceData(r); }),
-        $.getJSON("Scenes.json", function (r)
-        {
+        $.getJSON("Scenes.json", function (r) {
             let selection = <HTMLSelectElement>document.getElementById('selection');
             (<Array<SceneTable>>r).forEach(x => {
                 let option = <HTMLOptionElement>document.createElement('option');
@@ -249,7 +298,9 @@ window.onload = () => {
                 option.textContent = `${x.Scene} (${x.Id})`;
                 selection.appendChild(option);
             });
-        })
+        }),
+        $.getJSON("SpawnResults.json", function (r) { wwMath.setResolutionData(r); }),
+        $.getJSON("EntranceTable.json", function (r) { wwMath.setEntranceData(r); })
     ).done(x =>
     {
         let form = document.getElementById('test-input');

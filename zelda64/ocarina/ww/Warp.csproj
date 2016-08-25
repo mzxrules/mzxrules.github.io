@@ -26,6 +26,7 @@
     <Content Include="index.html" />
     <Content Include="packages.config" />
     <Content Include="EntranceTable.json" />
+    <Content Include="Scenes.json" />
     <None Include="Scripts\jquery-3.1.0.intellisense.js" />
     <Content Include="Scripts\jquery-3.1.0.js" />
     <Content Include="Scripts\jquery-3.1.0.min.js" />

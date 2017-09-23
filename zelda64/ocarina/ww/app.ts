@@ -68,7 +68,6 @@
 
     getStartResultsByScene(scene: number) {
         let base = this.entData.filter(x => x.Scene == scene && x.Base == x.Index);
-        //let start = this.entData.filter(x => x.Scene == scene);
 
         let result = new Array<StartEndResult>();
         base.forEach(x => {
@@ -188,7 +187,8 @@
         else {
             this.csCheck = this.csCheckParsed;
         }
-        let result;
+        let result = <Array<StartEndResult>>[];
+
         if ($('.lookup-input').is(':checked')) {
             result = this.getDestinationResultsByScene(i);
         }
@@ -196,17 +196,18 @@
             result = this.getStartResultsByScene(i);
         }
 
-        //sort results
-        result = result.sort(function (a, b) {
-            let x = a.Start.Base - b.Start.Base;
-            x = x == 0 ? (a.Result.Cs - b.Result.Cs) : x;
-            return x;
-        });
-
         //filter results by cutscene
         if ($('.crash-input').is(':checked')) {
             result = result.filter(x => x.Result.Out > 2);
         }
+
+        //sort results
+        result = result.sort(function (a, b) {
+            let x = a.Start.Base - b.Start.Base;
+            x = x == 0 ? (a.Cutscene - b.Cutscene) : x;
+            return x;
+        });
+
         this.updateResults3(result);
 
         //let i = parseInt(this.input.value);

@@ -54,7 +54,6 @@ var WarpMath = (function () {
     WarpMath.prototype.getStartResultsByScene = function (scene) {
         var _this = this;
         var base = this.entData.filter(function (x) { return x.Scene == scene && x.Base == x.Index; });
-        //let start = this.entData.filter(x => x.Scene == scene);
         var result = new Array();
         base.forEach(function (x) {
             _this.csCheck.forEach(function (cs) {
@@ -164,23 +163,23 @@ var WarpMath = (function () {
         else {
             this.csCheck = this.csCheckParsed;
         }
-        var result;
+        var result = [];
         if ($('.lookup-input').is(':checked')) {
             result = this.getDestinationResultsByScene(i);
         }
         else {
             result = this.getStartResultsByScene(i);
         }
-        //sort results
-        result = result.sort(function (a, b) {
-            var x = a.Start.Base - b.Start.Base;
-            x = x == 0 ? (a.Result.Cs - b.Result.Cs) : x;
-            return x;
-        });
         //filter results by cutscene
         if ($('.crash-input').is(':checked')) {
             result = result.filter(function (x) { return x.Result.Out > 2; });
         }
+        //sort results
+        result = result.sort(function (a, b) {
+            var x = a.Start.Base - b.Start.Base;
+            x = x == 0 ? (a.Cutscene - b.Cutscene) : x;
+            return x;
+        });
         this.updateResults3(result);
         //let i = parseInt(this.input.value);
         //let entRecord = wrongMath.getEntranceRecord(i);

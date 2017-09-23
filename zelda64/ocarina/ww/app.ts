@@ -45,7 +45,7 @@
         this.updateResults(results);
     }
 
-    getResultsByScene(scene: number) {
+    getDestinationResultsByScene(scene: number) {
         //lawd have mercy
         let base = this.entData.filter(x => x.Base == x.Index);
         let dest = this.entData.filter(x => x.Scene == scene);
@@ -63,16 +63,27 @@
                 });
             });
         });
-        result = result.sort(function (a, b) {
-            let x = a.Start.Base - b.Start.Base;
-            x = x == 0 ? (a.Result.Cs - b.Result.Cs) : x;
-            return x;
+        return result;
+    }
+
+    getStartResultsByScene(scene: number) {
+        let base = this.entData.filter(x => x.Scene == scene && x.Base == x.Index);
+        //let start = this.entData.filter(x => x.Scene == scene);
+
+        let result = new Array<StartEndResult>();
+        base.forEach(x => {
+            this.csCheck.forEach(cs => {
+                let lookupIndex = x.Index + cs + 4;
+                if (lookupIndex < 0x614) {
+                    let entRec = this.entData[lookupIndex]; //(ent => ent.Index == x.Index + cs + 4);
+                    let resolutionRecords = this.getResolutionRecords(entRec.Scene, entRec.Spawn, cs);
+                    resolutionRecords.forEach(res => {
+                        result.push(new StartEndResult(x, entRec, res, cs));
+                    });
+                }
+            });
         });
-        
-        if ($('.crash-input').is(':checked')) {
-            result = result.filter(x => x.Result.Out > 2);
-        }
-        this.updateResults3(result);
+        return result;
     }
 
     getEntranceRecord(index: number) {
@@ -135,7 +146,8 @@
     }
 
     formatSpawnResolution(x: SpawnResolution) {
-        return x.Scene.toString() + " " + x.Spawn.toString() + " " + x.Cs.toString() + " " + x.Fw + " " + x.Out + " " + x.Info;
+        return `${x.Scene} ${x.Spawn} ${x.Cs} ${x.Fw} ${x.Out} ${x.Info}`;
+        //return x.Scene.toString() + " " + x.Spawn.toString() + " " + x.Cs.toString() + " " + x.Fw + " " + x.Out + " " + x.Info;
     }
 
     getCutscenesToCheck() {
@@ -176,7 +188,26 @@
         else {
             this.csCheck = this.csCheckParsed;
         }
-        this.getResultsByScene(i);
+        let result;
+        if ($('.lookup-input').is(':checked')) {
+            result = this.getDestinationResultsByScene(i);
+        }
+        else {
+            result = this.getStartResultsByScene(i);
+        }
+
+        //sort results
+        result = result.sort(function (a, b) {
+            let x = a.Start.Base - b.Start.Base;
+            x = x == 0 ? (a.Result.Cs - b.Result.Cs) : x;
+            return x;
+        });
+
+        //filter results by cutscene
+        if ($('.crash-input').is(':checked')) {
+            result = result.filter(x => x.Result.Out > 2);
+        }
+        this.updateResults3(result);
 
         //let i = parseInt(this.input.value);
         //let entRecord = wrongMath.getEntranceRecord(i);

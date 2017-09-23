@@ -14,6 +14,7 @@
         <fieldset disabled="disabled">
             <select id="selection" onchange="warpMath.calculateWarps()" style="width: 270px"></select>
             <input id="cutscene-input" value="0,1,3" oninput="warpMath.getCutscenesToCheck()" />
+            <label>Destination</label><input class="lookup-input" type="checkbox" checked="checked" onchange="warpMath.calculateWarps()"/>
             <label>Test All Cutscenes</label><input class="all-cutscene-input" type="checkbox" onchange="warpMath.calculateWarps()" />
             <label>Hide Likely Crashes</label><input class="crash-input" type="checkbox" checked="checked" onchange="warpMath.calculateWarps()" />
         </fieldset>

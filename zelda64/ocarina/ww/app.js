@@ -31,7 +31,7 @@ var WarpMath = (function () {
         });
         this.updateResults(results);
     };
-    WarpMath.prototype.getResultsByScene = function (scene) {
+    WarpMath.prototype.getDestinationResultsByScene = function (scene) {
         var _this = this;
         //lawd have mercy
         var base = this.entData.filter(function (x) { return x.Base == x.Index; });
@@ -49,15 +49,26 @@ var WarpMath = (function () {
                 });
             });
         });
-        result = result.sort(function (a, b) {
-            var x = a.Start.Base - b.Start.Base;
-            x = x == 0 ? (a.Result.Cs - b.Result.Cs) : x;
-            return x;
+        return result;
+    };
+    WarpMath.prototype.getStartResultsByScene = function (scene) {
+        var _this = this;
+        var base = this.entData.filter(function (x) { return x.Scene == scene && x.Base == x.Index; });
+        //let start = this.entData.filter(x => x.Scene == scene);
+        var result = new Array();
+        base.forEach(function (x) {
+            _this.csCheck.forEach(function (cs) {
+                var lookupIndex = x.Index + cs + 4;
+                if (lookupIndex < 0x614) {
+                    var entRec_1 = _this.entData[lookupIndex]; //(ent => ent.Index == x.Index + cs + 4);
+                    var resolutionRecords = _this.getResolutionRecords(entRec_1.Scene, entRec_1.Spawn, cs);
+                    resolutionRecords.forEach(function (res) {
+                        result.push(new StartEndResult(x, entRec_1, res, cs));
+                    });
+                }
+            });
         });
-        if ($('.crash-input').is(':checked')) {
-            result = result.filter(function (x) { return x.Result.Out > 2; });
-        }
-        this.updateResults3(result);
+        return result;
     };
     WarpMath.prototype.getEntranceRecord = function (index) {
         return this.entData.filter(function (x) { return x.Index == index; })[0];
@@ -116,7 +127,8 @@ var WarpMath = (function () {
         });
     };
     WarpMath.prototype.formatSpawnResolution = function (x) {
-        return x.Scene.toString() + " " + x.Spawn.toString() + " " + x.Cs.toString() + " " + x.Fw + " " + x.Out + " " + x.Info;
+        return x.Scene + " " + x.Spawn + " " + x.Cs + " " + x.Fw + " " + x.Out + " " + x.Info;
+        //return x.Scene.toString() + " " + x.Spawn.toString() + " " + x.Cs.toString() + " " + x.Fw + " " + x.Out + " " + x.Info;
     };
     WarpMath.prototype.getCutscenesToCheck = function () {
         var csInput = $('#cutscene-input').val();
@@ -152,7 +164,24 @@ var WarpMath = (function () {
         else {
             this.csCheck = this.csCheckParsed;
         }
-        this.getResultsByScene(i);
+        var result;
+        if ($('.lookup-input').is(':checked')) {
+            result = this.getDestinationResultsByScene(i);
+        }
+        else {
+            result = this.getStartResultsByScene(i);
+        }
+        //sort results
+        result = result.sort(function (a, b) {
+            var x = a.Start.Base - b.Start.Base;
+            x = x == 0 ? (a.Result.Cs - b.Result.Cs) : x;
+            return x;
+        });
+        //filter results by cutscene
+        if ($('.crash-input').is(':checked')) {
+            result = result.filter(function (x) { return x.Result.Out > 2; });
+        }
+        this.updateResults3(result);
         //let i = parseInt(this.input.value);
         //let entRecord = wrongMath.getEntranceRecord(i);
         //wrongMath.getResolutionData(entRecord.Scene, entRecord.Spawn)
